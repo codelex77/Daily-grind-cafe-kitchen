@@ -1,0 +1,870 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Daily Grind | Gaborone Cafe & Kitchen</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400;1,600&family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <style>
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --cream:    #faf6f0;
+            --warm:     #f5ede0;
+            --latte:    #c8a87a;
+            --espresso: #3d2b1f;
+            --roast:    #6b3f2a;
+            --bark:     #8b5e3c;
+            --smoke:    #1a1410;
+            --mid:      #9a8070;
+            --muted:    #b8a898;
+            --white:    #fff;
+            --font-display: 'Cormorant Garamond', serif;
+            --font-body:    'DM Sans', sans-serif;
+            --font-mono:    'DM Mono', monospace;
+            --transition: 0.3s cubic-bezier(0.4,0,0.2,1);
+            --radius: 2px;
+        }
+
+        html { scroll-behavior: smooth; }
+        body { background: var(--cream); color: var(--espresso); font-family: var(--font-body); font-size: 16px; line-height: 1.6; overflow-x: hidden; }
+        a { text-decoration: none; color: inherit; }
+        img { display: block; width: 100%; object-fit: cover; }
+        ul { list-style: none; }
+        .container { max-width: 1140px; margin: 0 auto; padding: 0 28px; }
+
+        @keyframes fadeUp { from { opacity: 0; transform: translateY(32px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+        .fade-up { opacity: 0; transform: translateY(36px); transition: opacity 0.7s ease, transform 0.7s ease; }
+        .fade-up.visible { opacity: 1; transform: translateY(0); }
+        .fade-up:nth-child(2) { transition-delay: 0.1s; }
+        .fade-up:nth-child(3) { transition-delay: 0.2s; }
+        .fade-up:nth-child(4) { transition-delay: 0.3s; }
+
+        /* ============ HEADER ============ */
+        #header {
+            position: fixed; top: 0; left: 0; right: 0; z-index: 1000;
+            transition: background var(--transition), box-shadow var(--transition);
+        }
+        #header.scrolled {
+            background: rgba(250,246,240,0.97);
+            backdrop-filter: blur(12px);
+            box-shadow: 0 1px 0 rgba(61,43,31,0.1);
+        }
+        .header-inner {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 22px 40px; transition: padding var(--transition);
+        }
+        #header.scrolled .header-inner { padding: 14px 40px; }
+
+        .logo { display: flex; flex-direction: column; line-height: 1; }
+        .logo-main { font-family: var(--font-display); font-size: 22px; font-weight: 700; letter-spacing: 3px; text-transform: uppercase; color: var(--espresso); }
+        .logo-main span { color: var(--roast); }
+        .logo-sub { font-family: var(--font-mono); font-size: 9px; letter-spacing: 4px; text-transform: uppercase; color: var(--muted); margin-top: 2px; }
+
+        nav ul { display: flex; gap: 36px; align-items: center; }
+        nav a { font-family: var(--font-mono); font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--mid); transition: color var(--transition); position: relative; }
+        nav a::after { content: ''; position: absolute; bottom: -3px; left: 0; width: 0; height: 1px; background: var(--roast); transition: width var(--transition); }
+        nav a:hover { color: var(--espresso); }
+        nav a:hover::after { width: 100%; }
+        .nav-reserve { background: var(--espresso) !important; color: var(--cream) !important; padding: 10px 22px !important; border-radius: 40px !important; transition: background var(--transition) !important; }
+        .nav-reserve:hover { background: var(--roast) !important; }
+        .nav-reserve::after { display: none !important; }
+
+        .hamburger { display: none; flex-direction: column; gap: 5px; cursor: pointer; background: none; border: none; padding: 4px; }
+        .hamburger span { display: block; width: 24px; height: 1.5px; background: var(--espresso); transition: var(--transition); }
+        .hamburger.open span:nth-child(1) { transform: translateY(6.5px) rotate(45deg); }
+        .hamburger.open span:nth-child(2) { opacity: 0; }
+        .hamburger.open span:nth-child(3) { transform: translateY(-6.5px) rotate(-45deg); }
+
+        .mobile-nav { display: none; flex-direction: column; background: var(--cream); border-top: 1px solid rgba(61,43,31,0.1); padding: 20px 24px; gap: 4px; }
+        .mobile-nav.open { display: flex; }
+        .mobile-nav a { font-family: var(--font-mono); font-size: 12px; letter-spacing: 2px; text-transform: uppercase; color: var(--mid); padding: 12px 0; border-bottom: 1px solid rgba(61,43,31,0.08); transition: color var(--transition); }
+        .mobile-nav a:last-child { border-bottom: none; }
+        .mobile-nav a:hover { color: var(--roast); }
+
+        /* ============ HERO ============ */
+        .hero {
+            min-height: 100vh; position: relative; display: flex; align-items: center; justify-content: center;
+            text-align: center; overflow: hidden;
+        }
+        .hero-bg {
+            position: absolute; inset: 0;
+            background-image: url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&q=80&w=1600');
+            background-size: cover; background-position: center;
+        }
+        .hero-bg::after { content: ''; position: absolute; inset: 0; background: rgba(26,20,16,0.62); }
+        .hero-content { position: relative; z-index: 2; padding: 0 24px; max-width: 800px; }
+
+        .hero-eyebrow {
+            display: inline-flex; align-items: center; gap: 12px;
+            font-family: var(--font-mono); font-size: 11px; letter-spacing: 4px; text-transform: uppercase;
+            color: var(--latte); margin-bottom: 24px;
+        }
+        .hero-eyebrow::before, .hero-eyebrow::after { content: '—'; opacity: 0.5; }
+
+        .hero h1 {
+            font-family: var(--font-display); font-size: clamp(52px, 8vw, 100px);
+            font-weight: 700; line-height: 0.95; color: var(--cream);
+            margin-bottom: 24px; letter-spacing: -1px;
+        }
+        .hero h1 em { font-style: italic; color: var(--latte); }
+
+        .hero-desc { font-size: 17px; color: rgba(250,246,240,0.7); line-height: 1.8; margin-bottom: 44px; max-width: 540px; margin-left: auto; margin-right: auto; }
+
+        .hero-actions { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; }
+
+        /* ============ BUTTONS ============ */
+        .btn {
+            display: inline-flex; align-items: center; gap: 10px;
+            font-family: var(--font-mono); font-size: 11px; letter-spacing: 2px; text-transform: uppercase;
+            padding: 16px 32px; border-radius: 40px; cursor: pointer; border: none;
+            transition: all var(--transition); font-weight: 500;
+        }
+        .btn svg { width: 15px; height: 15px; flex-shrink: 0; }
+        .btn-primary { background: var(--latte); color: var(--espresso); }
+        .btn-primary:hover { background: #d4b48a; transform: translateY(-2px); box-shadow: 0 12px 28px rgba(200,168,122,0.35); }
+        .btn-outline-light { background: transparent; color: var(--cream); border: 1px solid rgba(250,246,240,0.4); }
+        .btn-outline-light:hover { border-color: var(--cream); background: rgba(250,246,240,0.08); transform: translateY(-2px); }
+        .btn-dark { background: var(--espresso); color: var(--cream); }
+        .btn-dark:hover { background: var(--roast); transform: translateY(-2px); box-shadow: 0 12px 28px rgba(61,43,31,0.3); }
+        .btn-dark:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+        .btn-outline-dark { background: transparent; color: var(--espresso); border: 1px solid rgba(61,43,31,0.3); border-radius: 40px; padding: 14px 28px; font-family: var(--font-mono); font-size: 11px; letter-spacing: 2px; text-transform: uppercase; cursor: pointer; transition: all var(--transition); display: inline-flex; align-items: center; gap: 10px; }
+        .btn-outline-dark:hover { border-color: var(--espresso); background: rgba(61,43,31,0.04); }
+
+        /* ============ STATS ============ */
+        .stats { background: var(--espresso); padding: 48px 0; }
+        .stats-grid { display: grid; grid-template-columns: repeat(4,1fr); }
+        .stat-item { text-align: center; padding: 0 20px; border-right: 1px solid rgba(250,246,240,0.1); }
+        .stat-item:last-child { border-right: none; }
+        .stat-num { font-family: var(--font-display); font-size: 56px; line-height: 1; color: var(--latte); font-weight: 700; }
+        .stat-label { font-family: var(--font-mono); font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: rgba(250,246,240,0.45); margin-top: 6px; }
+
+        /* ============ ABOUT ============ */
+        .about { padding: 120px 0; background: var(--cream); }
+        .about-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 80px; align-items: center; }
+
+        .about-images { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; position: relative; }
+        .about-img-main { height: 380px; border-radius: 4px; overflow: hidden; grid-column: 1/-1; }
+        .about-img-main img { height: 100%; filter: saturate(90%); transition: filter var(--transition); }
+        .about-img-main:hover img { filter: saturate(110%); }
+        .about-img-sm { height: 200px; border-radius: 4px; overflow: hidden; }
+        .about-img-sm img { height: 100%; }
+
+        .about-tag { font-family: var(--font-mono); font-size: 10px; letter-spacing: 3px; text-transform: uppercase; color: var(--roast); margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+        .about-tag::before { content: '//'; opacity: 0.4; }
+        .about h2 { font-family: var(--font-display); font-size: clamp(36px, 4vw, 56px); font-weight: 700; color: var(--espresso); line-height: 1.05; margin-bottom: 20px; }
+        .about h2 em { font-style: italic; color: var(--roast); }
+        .about p { font-size: 15px; color: var(--mid); line-height: 1.9; margin-bottom: 16px; }
+
+        .about-quote { background: var(--warm); border-left: 3px solid var(--latte); padding: 20px 24px; margin: 28px 0; border-radius: 0 4px 4px 0; }
+        .about-quote p { font-family: var(--font-display); font-size: 18px; font-style: italic; color: var(--espresso); margin: 0; line-height: 1.6; }
+        .about-quote span { font-family: var(--font-mono); font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); display: block; margin-top: 8px; }
+
+        /* ============ MENU ============ */
+        .menu { padding: 120px 0; background: var(--smoke); }
+        .menu .section-tag { color: var(--latte); }
+        .menu .section-tag::before { color: var(--latte); }
+        .menu h2 { color: var(--cream); }
+
+        .section-tag { font-family: var(--font-mono); font-size: 10px; letter-spacing: 3px; text-transform: uppercase; color: var(--roast); margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+        .section-tag::before { content: '//'; opacity: 0.4; }
+        .section-title { font-family: var(--font-display); font-size: clamp(38px, 4vw, 60px); font-weight: 700; color: var(--espresso); line-height: 1; margin-bottom: 16px; letter-spacing: -0.5px; }
+        .section-sub { font-size: 15px; color: var(--mid); line-height: 1.7; max-width: 500px; }
+        .menu .section-sub { color: rgba(250,246,240,0.5); }
+
+        .menu-header { display: flex; align-items: flex-end; justify-content: space-between; margin-bottom: 56px; gap: 32px; flex-wrap: wrap; }
+
+        .menu-tabs { display: flex; gap: 4px; background: rgba(250,246,240,0.06); border-radius: 40px; padding: 4px; }
+        .menu-tab { font-family: var(--font-mono); font-size: 10px; letter-spacing: 2px; text-transform: uppercase; padding: 10px 20px; border-radius: 40px; cursor: pointer; border: none; background: none; color: rgba(250,246,240,0.45); transition: all var(--transition); }
+        .menu-tab.active { background: var(--latte); color: var(--espresso); }
+
+        .menu-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 2px; }
+        .menu-section { display: none; }
+        .menu-section.active { display: grid; grid-template-columns: repeat(3,1fr); gap: 2px; }
+
+        .menu-card { background: rgba(250,246,240,0.04); padding: 32px 28px; transition: background var(--transition); position: relative; overflow: hidden; }
+        .menu-card::before { content: ''; position: absolute; bottom: 0; left: 0; width: 0; height: 1px; background: var(--latte); transition: width 0.5s ease; }
+        .menu-card:hover { background: rgba(250,246,240,0.07); }
+        .menu-card:hover::before { width: 100%; }
+
+        .menu-card-icon { font-size: 28px; margin-bottom: 16px; }
+        .menu-card h3 { font-family: var(--font-display); font-size: 22px; color: var(--cream); margin-bottom: 8px; font-weight: 600; }
+        .menu-card p { font-size: 13px; color: rgba(250,246,240,0.45); line-height: 1.7; margin-bottom: 16px; }
+        .menu-items { display: flex; flex-direction: column; gap: 8px; }
+        .menu-item { display: flex; justify-content: space-between; align-items: center; }
+        .menu-item-name { font-size: 13px; color: rgba(250,246,240,0.7); }
+        .menu-item-price { font-family: var(--font-mono); font-size: 12px; color: var(--latte); }
+
+        /* ============ RESERVATION ============ */
+        .reservation { padding: 120px 0; background: var(--warm); }
+        .reservation-grid { display: grid; grid-template-columns: 1fr 1.2fr; gap: 80px; align-items: start; }
+
+        .res-info h2 { font-family: var(--font-display); font-size: clamp(38px,4vw,60px); font-weight: 700; color: var(--espresso); line-height: 1; margin-bottom: 20px; }
+        .res-info h2 em { font-style: italic; color: var(--roast); }
+        .res-info p { font-size: 15px; color: var(--mid); line-height: 1.8; margin-bottom: 32px; }
+
+        .res-details { display: flex; flex-direction: column; gap: 16px; }
+        .res-detail { display: flex; align-items: flex-start; gap: 14px; padding: 18px; background: var(--cream); border-radius: 4px; transition: box-shadow var(--transition); }
+        .res-detail:hover { box-shadow: 0 4px 20px rgba(61,43,31,0.08); }
+        .res-detail-icon { width: 38px; height: 38px; background: var(--espresso); border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+        .res-detail-icon svg { width: 16px; height: 16px; stroke: var(--latte); fill: none; stroke-width: 1.5; }
+        .res-detail h5 { font-family: var(--font-mono); font-size: 9px; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); margin-bottom: 3px; }
+        .res-detail p { font-size: 14px; color: var(--espresso); margin: 0; }
+
+        /* Form */
+        .res-form-wrap { background: var(--cream); border-radius: 4px; padding: 40px; box-shadow: 0 8px 40px rgba(61,43,31,0.1); position: relative; overflow: hidden; }
+        .res-form-wrap::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: var(--latte); }
+
+        .form-title { font-family: var(--font-display); font-size: 28px; font-weight: 700; color: var(--espresso); margin-bottom: 4px; }
+        .form-sub { font-size: 13px; color: var(--muted); margin-bottom: 28px; }
+
+        .form-tabs { display: flex; gap: 4px; background: var(--warm); border-radius: 40px; padding: 4px; margin-bottom: 24px; }
+        .form-tab { flex: 1; text-align: center; font-family: var(--font-mono); font-size: 10px; letter-spacing: 2px; text-transform: uppercase; padding: 10px; border-radius: 40px; cursor: pointer; border: none; background: none; color: var(--muted); transition: all var(--transition); }
+        .form-tab.active { background: var(--espresso); color: var(--cream); }
+
+        .form-panel { display: none; }
+        .form-panel.active { display: block; }
+
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+        .form-group { display: flex; flex-direction: column; gap: 7px; margin-bottom: 14px; }
+        .form-group label { font-family: var(--font-mono); font-size: 9px; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); }
+        .form-group input, .form-group select, .form-group textarea {
+            background: var(--warm); border: 1px solid rgba(61,43,31,0.15); border-radius: var(--radius);
+            color: var(--espresso); padding: 13px 16px; font-family: var(--font-body); font-size: 14px;
+            width: 100%; transition: border-color var(--transition), box-shadow var(--transition);
+        }
+        .form-group input:focus, .form-group select:focus, .form-group textarea:focus { outline: none; border-color: var(--roast); box-shadow: 0 0 0 3px rgba(107,63,42,0.1); }
+        .form-group input::placeholder, .form-group textarea::placeholder { color: var(--muted); }
+        .form-group select option { background: var(--cream); }
+        .form-group textarea { resize: vertical; min-height: 100px; }
+        .form-group input.error, .form-group select.error { border-color: #c0392b; }
+
+        .form-success { display: none; text-align: center; padding: 48px 20px; }
+        .form-success .check { width: 64px; height: 64px; background: rgba(200,168,122,0.15); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px; }
+        .form-success .check svg { width: 28px; height: 28px; stroke: var(--latte); fill: none; stroke-width: 2; }
+        .form-success h4 { font-family: var(--font-display); font-size: 28px; color: var(--espresso); margin-bottom: 8px; }
+        .form-success p { font-size: 14px; color: var(--mid); }
+
+        .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid rgba(250,246,240,0.3); border-top-color: var(--cream); border-radius: 50%; animation: spin 0.7s linear infinite; }
+
+        /* ============ TESTIMONIALS ============ */
+        .testimonials { padding: 100px 0; background: var(--cream); }
+        .test-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 24px; }
+        .test-card { background: var(--warm); border-radius: 4px; padding: 32px; position: relative; transition: transform var(--transition), box-shadow var(--transition); }
+        .test-card:hover { transform: translateY(-4px); box-shadow: 0 12px 40px rgba(61,43,31,0.1); }
+        .test-card::before { content: '"'; position: absolute; top: 16px; right: 24px; font-family: var(--font-display); font-size: 72px; color: var(--latte); opacity: 0.25; line-height: 1; }
+        .test-stars { display: flex; gap: 3px; margin-bottom: 16px; color: var(--latte); font-size: 13px; }
+        .test-text { font-size: 15px; color: var(--mid); line-height: 1.8; margin-bottom: 24px; font-style: italic; }
+        .test-author { display: flex; align-items: center; gap: 12px; }
+        .test-avatar { width: 40px; height: 40px; background: var(--espresso); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: var(--font-display); font-size: 15px; color: var(--latte); flex-shrink: 0; }
+        .test-author h5 { font-size: 14px; font-weight: 600; color: var(--espresso); }
+        .test-author p { font-family: var(--font-mono); font-size: 10px; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); }
+
+        /* ============ CTA BAND ============ */
+        .cta-band { background: var(--espresso); padding: 72px 0; }
+        .cta-band .container { display: flex; align-items: center; justify-content: space-between; gap: 40px; flex-wrap: wrap; }
+        .cta-band h2 { font-family: var(--font-display); font-size: clamp(32px,4vw,52px); color: var(--cream); font-weight: 700; line-height: 1; }
+        .cta-band h2 em { font-style: italic; color: var(--latte); }
+        .cta-band p { font-size: 14px; color: rgba(250,246,240,0.5); margin-top: 6px; }
+        .cta-actions { display: flex; gap: 14px; flex-wrap: wrap; }
+
+        /* ============ FOOTER ============ */
+        footer { background: var(--smoke); padding: 80px 0 0; }
+        .footer-grid { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 48px; margin-bottom: 60px; }
+        .footer-brand p { font-size: 14px; color: rgba(250,246,240,0.4); line-height: 1.7; max-width: 280px; margin: 16px 0 24px; }
+        .footer-social { display: flex; gap: 10px; }
+        .footer-social a { width: 36px; height: 36px; background: rgba(250,246,240,0.06); border: 1px solid rgba(250,246,240,0.1); border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: all var(--transition); }
+        .footer-social a:hover { background: var(--latte); border-color: var(--latte); }
+        .footer-social a svg { width: 15px; height: 15px; fill: rgba(250,246,240,0.6); transition: fill var(--transition); }
+        .footer-social a:hover svg { fill: var(--espresso); }
+        .footer-col h4 { font-family: var(--font-mono); font-size: 9px; letter-spacing: 3px; text-transform: uppercase; color: var(--latte); margin-bottom: 20px; }
+        .footer-col ul { display: flex; flex-direction: column; gap: 10px; }
+        .footer-col ul li a, .footer-col ul li { font-size: 13px; color: rgba(250,246,240,0.4); transition: color var(--transition); }
+        .footer-col ul li a:hover { color: rgba(250,246,240,0.8); }
+        .footer-bottom { border-top: 1px solid rgba(250,246,240,0.07); padding: 24px 0; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
+        .footer-bottom p { font-family: var(--font-mono); font-size: 10px; letter-spacing: 1px; color: rgba(250,246,240,0.25); }
+        .footer-bottom a { color: var(--latte); }
+
+        /* Footer logo */
+        .footer-logo { font-family: var(--font-display); font-size: 20px; font-weight: 700; letter-spacing: 3px; color: rgba(250,246,240,0.8); }
+        .footer-logo span { color: var(--latte); }
+
+        /* ============ FLOATING BOOK ============ */
+        .float-book { position: fixed; bottom: 28px; right: 28px; z-index: 999; }
+        .float-book-btn { display: flex; align-items: center; gap: 10px; background: var(--latte); color: var(--espresso); padding: 14px 24px; border-radius: 40px; font-family: var(--font-mono); font-size: 11px; letter-spacing: 2px; text-transform: uppercase; box-shadow: 0 4px 20px rgba(200,168,122,0.4); transition: all var(--transition); }
+        .float-book-btn:hover { background: #d4b48a; transform: translateY(-2px); box-shadow: 0 8px 28px rgba(200,168,122,0.5); }
+        .float-book-btn svg { width: 16px; height: 16px; stroke: var(--espresso); fill: none; stroke-width: 1.5; }
+
+        .scroll-top { position: fixed; bottom: 28px; left: 28px; z-index: 999; width: 44px; height: 44px; background: var(--espresso); border: none; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; opacity: 0; transform: translateY(20px); transition: opacity var(--transition), transform var(--transition); }
+        .scroll-top.visible { opacity: 1; transform: translateY(0); }
+        .scroll-top:hover { background: var(--roast); }
+        .scroll-top svg { width: 16px; height: 16px; stroke: var(--cream); fill: none; stroke-width: 2; }
+
+        /* ============ RESPONSIVE ============ */
+        @media (max-width: 1024px) {
+            .about-grid { grid-template-columns: 1fr; gap: 48px; }
+            .about-images { display: none; }
+            .reservation-grid { grid-template-columns: 1fr; gap: 48px; }
+            .menu-section.active { grid-template-columns: 1fr 1fr; }
+            .footer-grid { grid-template-columns: 1fr 1fr; }
+            .footer-brand { grid-column: 1/-1; }
+        }
+        @media (max-width: 768px) {
+            nav { display: none; }
+            .hamburger { display: flex; }
+            .header-inner { padding: 16px 24px; }
+            #header.scrolled .header-inner { padding: 12px 24px; }
+            .stats-grid { grid-template-columns: repeat(2,1fr); }
+            .stat-item { border-right: none; border-bottom: 1px solid rgba(250,246,240,0.1); padding: 24px; }
+            .stat-item:nth-child(odd) { border-right: 1px solid rgba(250,246,240,0.1); }
+            .stat-item:nth-last-child(-n+2) { border-bottom: none; }
+            .menu-section.active { grid-template-columns: 1fr; }
+            .menu-header { flex-direction: column; align-items: flex-start; }
+            .test-grid { grid-template-columns: 1fr; }
+            .cta-band .container { flex-direction: column; text-align: center; }
+            .cta-actions { justify-content: center; }
+            .footer-grid { grid-template-columns: 1fr; gap: 28px; }
+            .footer-bottom { flex-direction: column; text-align: center; }
+            .form-row { grid-template-columns: 1fr; }
+            .float-book-btn span { display: none; }
+            .float-book-btn { padding: 14px; border-radius: 50%; }
+        }
+        @media (max-width: 480px) {
+            .hero h1 { font-size: 44px; }
+            .res-form-wrap { padding: 24px 18px; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- HEADER -->
+    <header id="header">
+        <div class="header-inner">
+            <a href="#home" class="logo">
+                <div class="logo-main">THE DAILY <span>GRIND</span></div>
+                <div class="logo-sub">Cafe & Kitchen · Gaborone</div>
+            </a>
+            <nav>
+                <ul>
+                    <li><a href="#about">About</a></li>
+                    <li><a href="#menu">Menu</a></li>
+                    <li><a href="#contact">Contact</a></li>
+                    <li><a href="#reservation" class="nav-reserve">Reserve a Table</a></li>
+                </ul>
+            </nav>
+            <button class="hamburger" id="hamburger"><span></span><span></span><span></span></button>
+        </div>
+        <div class="mobile-nav" id="mobileNav">
+            <a href="#about">About</a>
+            <a href="#menu">Menu</a>
+            <a href="#contact">Contact</a>
+            <a href="#reservation">Reserve a Table →</a>
+        </div>
+    </header>
+
+    <!-- HERO -->
+    <section class="hero" id="home">
+        <div class="hero-bg"></div>
+        <div class="hero-content">
+            <div class="hero-eyebrow">Est. 2018 · Independence Ave, Gaborone</div>
+            <h1>Crafting Moments,<br>One <em>Cup</em> at a Time.</h1>
+            <p class="hero-desc">Gaborone's favourite local hangout for artisanal coffee, hearty brunch, and good company.</p>
+            <div class="hero-actions">
+                <a href="#reservation" class="btn btn-primary">
+                    <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                    Reserve a Table
+                </a>
+                <a href="#menu" class="btn btn-outline-light">View Menu</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- STATS -->
+    <div class="stats">
+        <div class="container">
+            <div class="stats-grid">
+                <div class="stat-item fade-up"><div class="stat-num" data-target="7">0</div><div class="stat-label">Years Open</div></div>
+                <div class="stat-item fade-up"><div class="stat-num" data-target="40">0</div><div class="stat-label">Menu Items</div></div>
+                <div class="stat-item fade-up"><div class="stat-num" data-target="500">0</div><div class="stat-label">Happy Guests / Week</div></div>
+                <div class="stat-item fade-up"><div class="stat-num" data-target="5">0</div><div class="stat-label">Star Rating</div></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ABOUT -->
+    <section class="about" id="about">
+        <div class="container">
+            <div class="about-grid">
+                <div class="about-images fade-up">
+                    <div class="about-img-main"><img src="https://images.unsplash.com/photo-1554118811-1e0d58224f24?auto=format&fit=crop&q=80&w=900" alt="Daily Grind interior"></div>
+                    <div class="about-img-sm"><img src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&q=80&w=500" alt="Coffee"></div>
+                    <div class="about-img-sm"><img src="https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&q=80&w=500" alt="Food"></div>
+                </div>
+                <div class="about-content fade-up">
+                    <div class="about-tag">About Us</div>
+                    <h2>More Than<br>Just <em>Coffee</em></h2>
+                    <p>Located on Independence Avenue, we've become Gaborone's local institution. Whether you're here for an after-work drink, a quick business lunch, or a leisurely family breakfast — our space is designed to feel like home.</p>
+                    <p>Every cup is crafted with care, every dish prepared fresh. We source our beans from East African farms and our produce locally, because quality starts at the source.</p>
+                    <div class="about-quote">
+                        <p>"The Vanilla Latte is a must-try! Excellent service and a great atmosphere for working."</p>
+                        <span>— Local Review, Google</span>
+                    </div>
+                    <a href="#reservation" class="btn-outline-dark">Book a Table</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- MENU -->
+    <section class="menu" id="menu">
+        <div class="container">
+            <div class="menu-header">
+                <div>
+                    <div class="section-tag">On The Menu</div>
+                    <h2 class="section-title" style="color:var(--cream)">What We Serve</h2>
+                    <p class="section-sub">Fresh, seasonal, and crafted with intention.</p>
+                </div>
+                <div class="menu-tabs">
+                    <button class="menu-tab active" onclick="switchTab('brews')">Brews</button>
+                    <button class="menu-tab" onclick="switchTab('brunch')">Brunch</button>
+                    <button class="menu-tab" onclick="switchTab('kitchen')">Kitchen</button>
+                </div>
+            </div>
+
+            <div id="tab-brews" class="menu-section active">
+                <div class="menu-card fade-up">
+                    <div class="menu-card-icon">☕</div>
+                    <h3>Espresso Bar</h3>
+                    <p>Classic Italian-style espresso drinks made with our house blend.</p>
+                    <div class="menu-items">
+                        <div class="menu-item"><span class="menu-item-name">Flat White</span><span class="menu-item-price">P32</span></div>
+                        <div class="menu-item"><span class="menu-item-name">Cappuccino</span><span class="menu-item-price">P30</span></div>
+                        <div class="menu-item"><span class="menu-item-name">Americano</span><span class="menu-item-price">P26</span></div>
+                    </div>
+                </div>
+                <div class="menu-card fade-up">
+                    <div class="menu-card-icon">🥛</div>
+                    <h3>Signature Lattes</h3>
+                    <p>House-made syrups and quality milk for an elevated experience.</p>
+                    <div class="menu-items">
+                        <div class="menu-item"><span class="menu-item-name">Vanilla Latte</span><span class="menu-item-price">P38</span></div>
+                        <div class="menu-item"><span class="menu-item-name">Caramel Latte</span><span class="menu-item-price">P38</span></div>
+                        <div class="menu-item"><span class="menu-item-name">Hazelnut Latte</span><span class="menu-item-price">P40</span></div>
+                    </div>
+                </div>
+                <div class="menu-card fade-up">
+                    <div class="menu-card-icon">🧊</div>
+                    <h3>Cold Brews</h3>
+                    <p>Slow-steeped for 18 hours. Smooth, rich, and refreshing.</p>
+                    <div class="menu-items">
+                        <div class="menu-item"><span class="menu-item-name">Cold Brew</span><span class="menu-item-price">P42</span></div>
+                        <div class="menu-item"><span class="menu-item-name">Nitro Cold Brew</span><span class="menu-item-price">P48</span></div>
+                        <div class="menu-item"><span class="menu-item-name">Iced Matcha Latte</span><span class="menu-item-price">P44</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="tab-brunch" class="menu-section">
+                <div class="menu-card fade-up">
+                    <div class="menu-card-icon">🥑</div>
+                    <h3>Avo & Eggs</h3>
+                    <p>Brunch classics done properly, served all day.</p>
+                    <div class="menu-items">
+                        <div class="menu-item"><span class="menu-item-name">Avo Toast</span><span class="menu-item-price">P85</span></div>
+                        <div class="menu-item"><span class="menu-item-name">Eggs Benedict</span><span class="menu-item-price">P95</span></div>
+                        <div class="menu-item"><span class="menu-item-name">Shakshuka</span><span class="menu-item-price">P88</span></div>
+                    </div>
+                </div>
+                <div class="menu-card fade-up">
+                    <div class="menu-card-icon">🥞</div>
+                    <h3>Pancakes & Sweet</h3>
+                    <p>Fluffy stacks and sweet treats for a perfect morning.</p>
+                    <div class="menu-items">
+                        <div class="menu-item"><span class="menu-item-name">Buttermilk Stack</span><span class="menu-item-price">P78</span></div>
+                        <div class="menu-item"><span class="menu-item-name">Banana Pancakes</span><span class="menu-item-price">P82</span></div>
+                        <div class="menu-item"><span class="menu-item-name">French Toast</span><span class="menu-item-price">P75</span></div>
+                    </div>
+                </div>
+                <div class="menu-card fade-up">
+                    <div class="menu-card-icon">🍳</div>
+                    <h3>Full English</h3>
+                    <p>A hearty classic to start the day right.</p>
+                    <div class="menu-items">
+                        <div class="menu-item"><span class="menu-item-name">Full English</span><span class="menu-item-price">P110</span></div>
+                        <div class="menu-item"><span class="menu-item-name">Veggie Breakfast</span><span class="menu-item-price">P98</span></div>
+                        <div class="menu-item"><span class="menu-item-name">Grilled Wrap</span><span class="menu-item-price">P88</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="tab-kitchen" class="menu-section">
+                <div class="menu-card fade-up">
+                    <div class="menu-card-icon">🍔</div>
+                    <h3>Gourmet Burgers</h3>
+                    <p>Handmade patties, brioche buns, house sauces.</p>
+                    <div class="menu-items">
+                        <div class="menu-item"><span class="menu-item-name">Classic Smash</span><span class="menu-item-price">P125</span></div>
+                        <div class="menu-item"><span class="menu-item-name">Bacon & Cheese</span><span class="menu-item-price">P138</span></div>
+                        <div class="menu-item"><span class="menu-item-name">Mushroom Swiss</span><span class="menu-item-price">P130</span></div>
+                    </div>
+                </div>
+                <div class="menu-card fade-up">
+                    <div class="menu-card-icon">🥗</div>
+                    <h3>Fresh Salads</h3>
+                    <p>Vibrant, filling salads with house dressings.</p>
+                    <div class="menu-items">
+                        <div class="menu-item"><span class="menu-item-name">Salmon Salad</span><span class="menu-item-price">P148</span></div>
+                        <div class="menu-item"><span class="menu-item-name">Caesar Chicken</span><span class="menu-item-price">P118</span></div>
+                        <div class="menu-item"><span class="menu-item-name">Grilled Halloumi</span><span class="menu-item-price">P112</span></div>
+                    </div>
+                </div>
+                <div class="menu-card fade-up">
+                    <div class="menu-card-icon">🍜</div>
+                    <h3>Seasonal Soups</h3>
+                    <p>Made fresh daily. Served with crusty bread.</p>
+                    <div class="menu-items">
+                        <div class="menu-item"><span class="menu-item-name">Tomato Basil</span><span class="menu-item-price">P72</span></div>
+                        <div class="menu-item"><span class="menu-item-name">Roasted Butternut</span><span class="menu-item-price">P78</span></div>
+                        <div class="menu-item"><span class="menu-item-name">Chicken & Veg</span><span class="menu-item-price">P82</span></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- RESERVATION + ENQUIRY FORM -->
+    <section class="reservation" id="reservation">
+        <div class="container">
+            <div class="reservation-grid">
+                <div class="res-info fade-up">
+                    <div class="section-tag">Visit Us</div>
+                    <h2>Book a Table<br>or <em>Say Hello</em></h2>
+                    <p>Reserve your spot in advance or send us a message. We'd love to have you.</p>
+                    <div class="res-details">
+                        <div class="res-detail">
+                            <div class="res-detail-icon"><svg viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg></div>
+                            <div><h5>Location</h5><p>Plot 133, Independence Ave, Gaborone</p></div>
+                        </div>
+                        <div class="res-detail">
+                            <div class="res-detail-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
+                            <div><h5>Hours</h5><p>Mon – Sat: 08:30 – 17:00<br>Sunday: Closed</p></div>
+                        </div>
+                        <div class="res-detail">
+                            <div class="res-detail-icon"><svg viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg></div>
+                            <div><h5>Phone</h5><p><a href="tel:+26739394640" style="color:var(--espresso)">+267 393 9464</a></p></div>
+                        </div>
+                        <div class="res-detail">
+                            <div class="res-detail-icon"><svg viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg></div>
+                            <div><h5>Email</h5><p><a href="mailto:hello@dailygrind.co.bw" style="color:var(--espresso)">hello@dailygrind.co.bw</a></p></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="res-form-wrap fade-up">
+                    <div id="formContent">
+                        <p class="form-title">Get in Touch</p>
+                        <p class="form-sub">Reserve a table or send us a message below.</p>
+                        <div class="form-tabs">
+                            <button class="form-tab active" onclick="switchForm('reservation')">🗓 Reservation</button>
+                            <button class="form-tab" onclick="switchForm('enquiry')">✉️ Enquiry</button>
+                        </div>
+
+                        <!-- Reservation Panel -->
+                        <div class="form-panel active" id="panel-reservation">
+                            <div class="form-row">
+                                <div class="form-group"><label>Full Name *</label><input type="text" id="res-name" placeholder="Your name"></div>
+                                <div class="form-group"><label>Phone *</label><input type="tel" id="res-phone" placeholder="71 234 567"></div>
+                            </div>
+                            <div class="form-group"><label>Email</label><input type="email" id="res-email" placeholder="Optional"></div>
+                            <div class="form-row">
+                                <div class="form-group"><label>Date *</label><input type="date" id="res-date"></div>
+                                <div class="form-group"><label>Time *</label>
+                                    <select id="res-time">
+                                        <option value="">Select time...</option>
+                                        <option>08:30</option><option>09:00</option><option>09:30</option>
+                                        <option>10:00</option><option>10:30</option><option>11:00</option>
+                                        <option>11:30</option><option>12:00</option><option>12:30</option>
+                                        <option>13:00</option><option>13:30</option><option>14:00</option>
+                                        <option>14:30</option><option>15:00</option><option>15:30</option>
+                                        <option>16:00</option><option>16:30</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="form-group"><label>Party Size *</label>
+                                <select id="res-size">
+                                    <option value="">Number of guests...</option>
+                                    <option>1</option><option>2</option><option>3</option><option>4</option>
+                                    <option>5</option><option>6</option><option>7 - 10</option><option>10+</option>
+                                </select>
+                            </div>
+                            <div class="form-group"><label>Special Requests</label><textarea id="res-notes" placeholder="Dietary requirements, occasion, seating preference..."></textarea></div>
+                            <button type="button" class="btn btn-dark" style="width:100%;justify-content:center;border-radius:40px;" id="resBtn" onclick="submitReservation()">
+                                <svg viewBox="0 0 24 24" style="width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                                Confirm Reservation
+                            </button>
+                        </div>
+
+                        <!-- Enquiry Panel -->
+                        <div class="form-panel" id="panel-enquiry">
+                            <div class="form-row">
+                                <div class="form-group"><label>Full Name *</label><input type="text" id="enq-name" placeholder="Your name"></div>
+                                <div class="form-group"><label>Phone</label><input type="tel" id="enq-phone" placeholder="71 234 567"></div>
+                            </div>
+                            <div class="form-group"><label>Email *</label><input type="email" id="enq-email" placeholder="your@email.com"></div>
+                            <div class="form-group"><label>Message *</label><textarea id="enq-message" placeholder="How can we help you?" style="min-height:140px;"></textarea></div>
+                            <button type="button" class="btn btn-dark" style="width:100%;justify-content:center;border-radius:40px;" id="enqBtn" onclick="submitEnquiry()">
+                                <svg viewBox="0 0 24 24" style="width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:2"><path d="M22 2L11 13M22 2L15 22l-4-9-9-4 20-7z"/></svg>
+                                Send Message
+                            </button>
+                        </div>
+                    </div>
+                    <div class="form-success" id="formSuccess">
+                        <div class="check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div>
+                        <h4 id="successTitle">Reservation Confirmed!</h4>
+                        <p id="successMsg">We've received your booking. See you soon!</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- TESTIMONIALS -->
+    <section class="testimonials">
+        <div class="container">
+            <div class="section-header fade-up" style="margin-bottom:48px;">
+                <div class="section-tag">Reviews</div>
+                <h2 class="section-title">What Guests Say</h2>
+            </div>
+            <div class="test-grid">
+                <div class="test-card fade-up">
+                    <div class="test-stars">★★★★★</div>
+                    <p class="test-text">The Vanilla Latte is incredible. I come here every morning before work — the atmosphere is just perfect for settling in with a laptop or a good book.</p>
+                    <div class="test-author"><div class="test-avatar">TM</div><div><h5>Thabo Molefe</h5><p>Regular Guest</p></div></div>
+                </div>
+                <div class="test-card fade-up">
+                    <div class="test-stars">★★★★★</div>
+                    <p class="test-text">Best brunch spot in Gaborone, hands down. The Eggs Benedict and cold brew combo is unbeatable. Staff are always welcoming and attentive.</p>
+                    <div class="test-author"><div class="test-avatar">KS</div><div><h5>Kelebogile Setlhare</h5><p>Food Blogger</p></div></div>
+                </div>
+                <div class="test-card fade-up">
+                    <div class="test-stars">★★★★★</div>
+                    <p class="test-text">We held our team lunch here and it was excellent. The gourmet burger is worth every thebe. Definitely coming back for the full English next time!</p>
+                    <div class="test-author"><div class="test-avatar">NM</div><div><h5>Neo Mmereki</h5><p>Business Owner</p></div></div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA BAND -->
+    <div class="cta-band">
+        <div class="container">
+            <div>
+                <h2>Come As You Are,<br><em>Stay For the Coffee.</em></h2>
+                <p>Walk-ins welcome · Reservations recommended for weekends</p>
+            </div>
+            <div class="cta-actions">
+                <a href="#reservation" class="btn btn-primary">Book a Table</a>
+                <a href="tel:+26739394640" class="btn btn-outline-light">Call Us</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- FOOTER -->
+    <footer id="contact">
+        <div class="container">
+            <div class="footer-grid">
+                <div class="footer-brand">
+                    <div class="footer-logo">THE DAILY <span>GRIND</span></div>
+                    <p>Gaborone's favourite cafe and kitchen. Good coffee, good food, good people — since 2018.</p>
+                    <div class="footer-social">
+                        <a href="#" aria-label="Instagram">
+                            <svg viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1112.63 8 4 4 0 0116 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>
+                        </a>
+                        <a href="#" aria-label="Facebook">
+                            <svg viewBox="0 0 24 24"><path d="M18 2h-3a5 5 0 00-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 011-1h3z"/></svg>
+                        </a>
+                    </div>
+                </div>
+                <div class="footer-col"><h4>Quick Links</h4><ul><li><a href="#about">About</a></li><li><a href="#menu">Menu</a></li><li><a href="#reservation">Reservations</a></li><li><a href="#contact">Contact</a></li></ul></div>
+                <div class="footer-col"><h4>Menu</h4><ul><li><a href="#menu">Signature Brews</a></li><li><a href="#menu">All-Day Brunch</a></li><li><a href="#menu">Fresh Kitchen</a></li></ul></div>
+                <div class="footer-col"><h4>Contact</h4><ul><li><a href="tel:+26739394640">+267 393 9464</a></li><li><a href="mailto:hello@dailygrind.co.bw">hello@dailygrind.co.bw</a></li><li>Plot 133, Independence Ave</li><li>Gaborone, Botswana</li></ul></div>
+            </div>
+            <div class="footer-bottom">
+                <p>© 2026 The Daily Grind. All rights reserved.</p>
+                <p>Developed by <a href="#">CodeEl</a> — Growing Gabane's Digital Economy</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- FLOATING BOOK BUTTON -->
+    <div class="float-book">
+        <a href="#reservation" class="float-book-btn">
+            <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            <span>Reserve</span>
+        </a>
+    </div>
+
+    <button class="scroll-top" id="scrollTop" onclick="window.scrollTo({top:0,behavior:'smooth'})">
+        <svg viewBox="0 0 24 24"><polyline points="18 15 12 9 6 15"/></svg>
+    </button>
+
+    <script>
+        'use strict';
+
+        /* ---- Supabase ---- */
+        const SUPABASE_URL  = 'https://pkolzgjtootsjhbvwtcf.supabase.co';
+        const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBrb2x6Z2p0b290c2poYnZ3dGNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ1NzczMjMsImV4cCI6MjA5MDE1MzMyM30.blJvipdwJDTzfVDcceGFvk6EYWZNJDaxRnhKeM9EgyY';
+        const { createClient } = supabase;
+        const db = createClient(SUPABASE_URL, SUPABASE_ANON);
+
+        /* ---- Hamburger ---- */
+        const hamburger = document.getElementById('hamburger');
+        const mobileNav = document.getElementById('mobileNav');
+        hamburger.addEventListener('click', () => {
+            hamburger.classList.toggle('open');
+            mobileNav.classList.toggle('open');
+        });
+        mobileNav.querySelectorAll('a').forEach(l => l.addEventListener('click', () => {
+            hamburger.classList.remove('open');
+            mobileNav.classList.remove('open');
+        }));
+
+        /* ---- Header scroll ---- */
+        const header = document.getElementById('header');
+        window.addEventListener('scroll', () => header.classList.toggle('scrolled', window.scrollY > 60), { passive: true });
+
+        /* ---- Scroll top ---- */
+        const scrollTopBtn = document.getElementById('scrollTop');
+        window.addEventListener('scroll', () => scrollTopBtn.classList.toggle('visible', window.scrollY > 500), { passive: true });
+
+        /* ---- Fade-up observer ---- */
+        const observer = new IntersectionObserver(entries => {
+            entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('visible'); observer.unobserve(e.target); } });
+        }, { threshold: 0.1, rootMargin: '0px 0px -60px 0px' });
+        document.querySelectorAll('.fade-up').forEach(el => observer.observe(el));
+
+        /* ---- Counter animation ---- */
+        const counterObserver = new IntersectionObserver(entries => {
+            entries.forEach(e => { if (e.isIntersecting) { animateCounter(e.target); counterObserver.unobserve(e.target); } });
+        }, { threshold: 0.5 });
+        document.querySelectorAll('.stat-num[data-target]').forEach(c => counterObserver.observe(c));
+
+        function animateCounter(el) {
+            const target = parseInt(el.dataset.target, 10);
+            const duration = 1800;
+            const start = performance.now();
+            const suffixes = { 500: '+', 40: '+', 7: '', 5: '★' };
+            function update(now) {
+                const progress = Math.min((now - start) / duration, 1);
+                const eased = 1 - Math.pow(1 - progress, 3);
+                el.textContent = Math.round(eased * target) + (progress >= 1 ? (suffixes[target] ?? '') : '');
+                if (progress < 1) requestAnimationFrame(update);
+            }
+            requestAnimationFrame(update);
+        }
+
+        /* ---- Menu tabs ---- */
+        function switchTab(tab) {
+            document.querySelectorAll('.menu-section').forEach(s => s.classList.remove('active'));
+            document.querySelectorAll('.menu-tab').forEach(t => t.classList.remove('active'));
+            document.getElementById('tab-' + tab).classList.add('active');
+            event.target.classList.add('active');
+        }
+
+        /* ---- Form tabs ---- */
+        let activeForm = 'reservation';
+        function switchForm(type) {
+            activeForm = type;
+            document.querySelectorAll('.form-panel').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.form-tab').forEach(t => t.classList.remove('active'));
+            document.getElementById('panel-' + type).classList.add('active');
+            event.target.classList.add('active');
+        }
+
+        /* ---- Show success ---- */
+        function showSuccess(title, msg) {
+            document.getElementById('formContent').style.display = 'none';
+            document.getElementById('successTitle').textContent = title;
+            document.getElementById('successMsg').textContent = msg;
+            document.getElementById('formSuccess').style.display = 'block';
+        }
+
+        /* ---- Validate helper ---- */
+        function validateFields(ids) {
+            let valid = true;
+            ids.forEach(id => {
+                const el = document.getElementById(id);
+                if (!el || !el.value.trim()) { el && el.classList.add('error'); valid = false; }
+                else el.classList.remove('error');
+            });
+            return valid;
+        }
+
+        /* ---- Submit Reservation ---- */
+        async function submitReservation() {
+            if (!validateFields(['res-name','res-phone','res-date','res-time','res-size'])) return;
+
+            const btn = document.getElementById('resBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner"></span> Saving...';
+
+            const data = {
+                name:       document.getElementById('res-name').value.trim(),
+                phone:      document.getElementById('res-phone').value.trim(),
+                email:      document.getElementById('res-email').value.trim(),
+                date:       document.getElementById('res-date').value,
+                time:       document.getElementById('res-time').value,
+                party_size: document.getElementById('res-size').value,
+                notes:      document.getElementById('res-notes').value.trim(),
+            };
+
+            const { error } = await db.from('dailygrind_reservations').insert([data]);
+            if (error) console.error('Supabase error:', error.message);
+
+            showSuccess('Reservation Confirmed!', `Thanks ${data.name}! We've got your table for ${data.party_size} on ${data.date} at ${data.time}. See you soon!`);
+        }
+
+        /* ---- Submit Enquiry ---- */
+        async function submitEnquiry() {
+            if (!validateFields(['enq-name','enq-email','enq-message'])) return;
+
+            const btn = document.getElementById('enqBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner"></span> Sending...';
+
+            const data = {
+                name:    document.getElementById('enq-name').value.trim(),
+                phone:   document.getElementById('enq-phone').value.trim(),
+                email:   document.getElementById('enq-email').value.trim(),
+                message: document.getElementById('enq-message').value.trim(),
+            };
+
+            const { error } = await db.from('dailygrind_enquiries').insert([data]);
+            if (error) console.error('Supabase error:', error.message);
+
+            showSuccess('Message Sent!', `Thanks ${data.name}! We'll get back to you at ${data.email} within 24 hours.`);
+        }
+
+        /* ---- Clear error on input ---- */
+        document.querySelectorAll('input, select, textarea').forEach(el => {
+            el.addEventListener('input', () => el.classList.remove('error'));
+        });
+
+        /* ---- Active nav on scroll ---- */
+        const navLinks = document.querySelectorAll('nav a[href^="#"]');
+        window.addEventListener('scroll', () => {
+            let current = '';
+            document.querySelectorAll('section[id]').forEach(s => {
+                if (window.scrollY >= s.offsetTop - 120) current = s.id;
+            });
+            navLinks.forEach(l => l.style.color = l.getAttribute('href') === `#${current}` ? 'var(--roast)' : '');
+        }, { passive: true });
+    </script>
+
+</body>
+</html>
